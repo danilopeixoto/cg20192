@@ -4,14 +4,14 @@ Name=cg20192
 Type=1
 Ver=2
 ObjFiles=
-Includes=
-Libs=
+Includes=external/glad/include/;external/glfw/include/;external/glm/include/
+Libs=external/glfw/lib/
 PrivateResource=
 ResourceIncludes=
 MakeIncludes=
 Compiler=
 CppCompiler=-std=c++11_@@_
-Linker=
+Linker=-lglu32_@@_-lopengl32_@@_-lglfw3dll_@@_
 IsCpp=1
 Icon=
 ExeOutput=build/
@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=0
 CompilerSettings=0000000000000000000000000
-UnitCount=1
+UnitCount=2
 
 [VersionInfo]
 Major=1
@@ -52,6 +52,16 @@ SyncProduct=1
 
 [Unit1]
 FileName=src\main.cpp
+CompileCpp=1
+Folder=src
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit2]
+FileName=external\glad\src\glad.cpp
 CompileCpp=1
 Folder=src
 Compile=1
