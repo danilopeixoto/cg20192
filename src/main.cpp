@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
 	std::vector<size_t> normalsIndices;
 	std::vector<size_t> textureCoordinatesIndices;
 	
-	loadTriangleMesh("../res/meshes/bunny.obj", positions, normals, textureCoordinates,
+	loadTriangleMesh("bunny.obj", positions, normals, textureCoordinates,
 	positionIndices, normalsIndices, textureCoordinatesIndices);
 	
 	std::cout<<glm::to_string(positions[positionIndices[0]])<<std::endl;
