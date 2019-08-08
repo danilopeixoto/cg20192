@@ -4,15 +4,25 @@ Name=cg20192
 Type=1
 Ver=2
 ObjFiles=
+<<<<<<< HEAD
 Includes=external/glad/include/;external/glfw/include/;external/glm/include/
 Libs=external/glfw/lib/
+=======
+Includes=C:\Users\aluno\Desktop\cg20192\external\glad\include;C:\Users\aluno\Desktop\cg20192\external\glfw\include;C:\Users\aluno\Desktop\cg20192\external\glm\include
+Libs=C:\Users\aluno\Desktop\cg20192\external\glfw\lib
+>>>>>>> origin
 PrivateResource=
 ResourceIncludes=
 MakeIncludes=
 Compiler=
+<<<<<<< HEAD
 CppCompiler=-std=c++11_@@_-DGLM_ENABLE_EXPERIMENTAL_@@_
 Linker=-lglu32_@@_-lopengl32_@@_-lglfw3dll_@@_
 _@@_
+=======
+CppCompiler=-std=c++11_@@_
+Linker=-lglu32_@@_-lopengl32_@@_-lglfw3dll_@@_
+>>>>>>> origin
 IsCpp=1
 Icon=
 ExeOutput=build/
@@ -30,7 +40,11 @@ IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=0
 CompilerSettings=0000000000000000000000000
+<<<<<<< HEAD
 UnitCount=6
+=======
+UnitCount=2
+>>>>>>> origin
 
 [VersionInfo]
 Major=1
@@ -71,6 +85,7 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
+<<<<<<< HEAD
 [Unit3]
 FileName=.gitignore
 Folder=
@@ -107,3 +122,5 @@ Priority=1000
 OverrideBuildCmd=0
 BuildCmd=
 
+=======
+>>>>>>> origin
