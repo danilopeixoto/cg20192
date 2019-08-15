@@ -29,7 +29,7 @@ Folders=external,external/glad,external/glad/src,src
 IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=0
-CompilerSettings=0000000000000000000000000
+CompilerSettings=0000000000000000001000000
 UnitCount=2
 
 [VersionInfo]
