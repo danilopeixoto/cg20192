@@ -19,6 +19,7 @@
 bool BACKGROUND_STATE = false;
 
 glm::mat4 PROJECTION(1.0f);
+glm::mat4 VIEW(1.0f);
 glm::mat4 MODEL(1.0f);
 
 // Read triangle mesh from Wavefront OBJ file format
@@ -104,14 +105,6 @@ bool readTriangleMesh(
     return true;
 }
 
-// EXERCÍCIO
-//
-// IMPLEMENTAR A FUNÇÃO ABAIXO VALENDO 10 PONTOS EXTRAS.
-// ATUALMENTE ELA NÃO UTILIZA OS PARÂMETROS DE ENTRADA E
-// CARREGA UM TRIÂNGULO CONSTANTE COM ATRIBUTOS DE POSIÇÃO E COR.
-// O OBJETIVO É MODIFICÁ-LA PARA CARREGAR OS TRIÂNGULOS DESCRITOS
-// PELOS PARÂMETROS, SEGUINDO A SUA DOCUMENTAÇÃO:
-//
 // Load triangle mesh to OpenGL
 // Normal and texture coordinate attributes are calculated by primitive when not available
 // Vertex attributes are exported to shader program at locations:
@@ -128,17 +121,64 @@ size_t loadTriangleMesh(
         GLenum usage,
         GLuint & vao,
         GLuint & vbo) {
-    // Triangle description
-    GLfloat vertices[] = {
-        -0.5f, -0.5f, 0.0f, // First vertex position
-         1.0f,  0.0f, 0.0f, // First vertex color
-         
-         0.5f, -0.5f, 0.0f, // Second vertex position
-         0.0f,  1.0f, 0.0f, // Second vertex color
-         
-         0.0f,  0.5f, 0.0f, // Third vertex position
-         0.0f,  0.0f, 1.0f, // Third vertex color
+    // Duplicate and expand the triangle vertices in a flat array
+    struct Vertex {
+        glm::vec3 position;
+        glm::vec3 normal;
+        glm::vec2 textureCoordinate;
     };
+    
+    bool hasNormals = normalIndices.size() > 0;
+    bool hasTextureCoordinates = textureCoordinateIndices.size() > 0;
+    
+    size_t vertexCount = positionIndices.size();
+    size_t vertexSize = sizeof(Vertex);
+    
+    std::vector<Vertex> vertices;
+    vertices.reserve(vertexCount);
+    
+    for (size_t i = 0; i < vertexCount / 3; i++) {
+        Vertex triangleVertices[3];
+        
+        for (size_t j = 0; j < 3; j++) {
+            Vertex & vertex = triangleVertices[j];
+            vertex.position = positions[positionIndices[i * 3 + j]];
+        }
+        
+        if (hasNormals) {
+            for (size_t j = 0; j < 3; j++){
+                Vertex & vertex = triangleVertices[j];
+                vertex.normal = normals[normalIndices[i * 3 + j]];
+            }
+        }
+        else {
+            Vertex & vertex0 = triangleVertices[0];
+            Vertex & vertex1 = triangleVertices[1];
+            Vertex & vertex2 = triangleVertices[2];
+            
+            glm::vec3 u = vertex1.position - vertex0.position;
+            glm::vec3 v = vertex2.position - vertex0.position;
+            
+            glm::vec3 n = glm::normalize(glm::cross(u, v));
+            
+            for (size_t j = 0; j < 3; j++) {
+                Vertex & vertex = triangleVertices[j];
+                vertex.normal = n;
+            }
+        }
+        
+        for (size_t j = 0; j < 3; j++) {
+            Vertex & vertex = triangleVertices[j];
+            
+            if (hasTextureCoordinates)
+                vertex.textureCoordinate = textureCoordinates[textureCoordinateIndices[i * 3 + j]];
+            else
+                vertex.textureCoordinate = glm::vec2((float)(j == 1), (float)(j == 2));
+        }
+        
+        for (size_t j = 0; j < 3; j++)
+            vertices.push_back(triangleVertices[j]);
+    }
     
     // Create and bind vertex array object
     glGenVertexArrays(1, &vao);
@@ -151,8 +191,8 @@ size_t loadTriangleMesh(
     // Copy vertex attribute data to vertex buffer object
     glBufferData(
         GL_ARRAY_BUFFER,
-        sizeof(vertices),
-        vertices,
+        vertices.size() * vertexSize,
+        vertices.data(),
         usage);
     
     // Define position attribute to shader program
@@ -160,27 +200,39 @@ size_t loadTriangleMesh(
         0,
         3,
         GL_FLOAT,
-        false,
-        6 * sizeof(GLfloat),
+        GL_FALSE,
+        vertexSize,
         (const GLvoid *)nullptr);
     
     // Enable position attribute to shader program
     glEnableVertexAttribArray(0);
     
-    // Define color attribute to shader program
+    // Define normal attribute to shader program
     glVertexAttribPointer(
         1,
         3,
         GL_FLOAT,
-        false,
-        6 * sizeof(GLfloat),
+        GL_FALSE,
+        vertexSize,
         (const GLvoid *)(3 * sizeof(GLfloat)));
     
-    // Enable color attribute to shader program
+    // Enable normal attribute to shader program
     glEnableVertexAttribArray(1);
     
+    // Define texture coordinate attribute to shader program
+    glVertexAttribPointer(
+        2,
+        2,
+        GL_FLOAT,
+        GL_FALSE,
+        vertexSize,
+        (const GLvoid *)(6 * sizeof(GLfloat)));
+    
+    // Enable texture coordinate attribute to shader program
+    glEnableVertexAttribArray(2);
+    
     // Return vertex count or three times the triangle count
-    return 3;
+    return vertexCount;
 }
 
 // Compile shader source code from text file format
@@ -234,7 +286,7 @@ bool compileShader(const std::string & filename, GLenum type, GLuint & id) {
 
     // Return shader id
     id = shaderID;
-
+    
     return true;
 }
 
@@ -309,7 +361,7 @@ void keyboard(
     if (key == GLFW_KEY_A && action == GLFW_PRESS)
         BACKGROUND_STATE = !BACKGROUND_STATE;
     
-    if (key == GLFW_KEY_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT))
+    if (key == GLFW_KEY_LEFT && (action == GLFW_PRESS || action == GLFW_REPEAT))
         MODEL = glm::rotate(MODEL, 0.1f, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
@@ -333,32 +385,6 @@ int main(int argc, char ** argv) {
     //
     // Access the second element of the first column as float
     // std::cout << m[0][1] << std::endl;
-
-    // Access vertex position attributes of the first triangle
-    //
-    // std::vector<glm::vec3> positions;
-    // std::vector<glm::vec3> normals;
-    // std::vector<glm::vec2> textureCoordinates;
-    // std::vector<size_t> positionIndices;
-    // std::vector<size_t> normalIndices;
-    // std::vector<size_t> textureCoordinateIndices;
-
-    // if (loadTriangleMesh(
-    //         "../res/meshes/bunny.obj",
-    //         positions, normals, textureCoordinates,
-    //         positionIndices, normalIndices, textureCoordinateIndices)) {
-    //	   size_t triangleIndex = 0;
-    //	   
-    //	   glm::vec3 p0 = positions[positionIndices[triangleIndex * 3]];
-    //	   glm::vec3 p1 = positions[positionIndices[triangleIndex * 3 + 1]];
-    //	   glm::vec3 p2 = positions[positionIndices[triangleIndex * 3 + 2]];
-    //	   
-    //	   std::cout << "First triangle vertices: " << std::endl;
-    //	   
-    //	   std::cout << glm::to_string(p0) << std::endl;
-    //	   std::cout << glm::to_string(p1) << std::endl;
-    //     std::cout << glm::to_string(p2) << std::endl;
-    // }
 
     // Check GLFW initialization
     if (!glfwInit()) {
@@ -402,7 +428,7 @@ int main(int argc, char ** argv) {
     GLuint programID;
     
     // Check if cannot create shader program
-    if (!createProgram("../res/shaders/triangle", programID)) {
+    if (!createProgram("../res/shaders/diffuse", programID)) {
         glfwTerminate();
 
         std::cout << "Cannot create shader program." << std::endl;
@@ -423,14 +449,19 @@ int main(int argc, char ** argv) {
     std::vector<size_t> normalIndices;
     std::vector<size_t> textureCoordinateIndices;
     
-    readTriangleMesh(
-        "../res/meshes/bunny.obj",
-        positions,
-        normals,
-        textureCoordinates,
-        positionIndices,
-        normalIndices,
-        textureCoordinateIndices);
+    if (!readTriangleMesh(
+            "../res/meshes/bunny.obj",
+            positions,
+            normals,
+            textureCoordinates,
+            positionIndices,
+            normalIndices,
+            textureCoordinateIndices)) {
+        glfwTerminate();
+
+        std::cout << "Cannot read triangle mesh." << std::endl;
+        return -1;
+    };
     
     // Load triangle mesh to OpenGL
     GLuint vao, vbo;
@@ -447,13 +478,22 @@ int main(int argc, char ** argv) {
         vbo);
     
     // Setup view matrix
-    glm::mat4 view = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 10.0f),
+    VIEW = glm::lookAt(
+        glm::vec3(10.0f, 5.0f, 10.0f),
         glm::vec3(0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f));
     
     // Initialize projection matrix and viewport
     resize(window, 800, 600);
+    
+    // Get model matrix location in shader program
+    GLint modelLocationID = glGetUniformLocation(programID, "model");
+    
+    // Get view matrix location in shader program
+    GLint viewLocationID = glGetUniformLocation(programID, "view");
+    
+    // Get projection matrix location in shader program
+    GLint projectionLocationID = glGetUniformLocation(programID, "projection");
     
     // Render loop
     while (!glfwWindowShouldClose(window)) {
@@ -473,15 +513,12 @@ int main(int argc, char ** argv) {
         glClear(GL_DEPTH_BUFFER_BIT);
         
         // Pass model matrix as parameter to shader program
-        GLint modelLocationID = glGetUniformLocation(programID, "model");
         glUniformMatrix4fv(modelLocationID, 1, GL_FALSE, glm::value_ptr(MODEL));
         
         // Pass view matrix as parameter to shader program
-        GLint viewLocationID = glGetUniformLocation(programID, "view");
-        glUniformMatrix4fv(viewLocationID, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(viewLocationID, 1, GL_FALSE, glm::value_ptr(VIEW));
         
         // Pass projection matrix as parameter to shader program
-        GLint projectionLocationID = glGetUniformLocation(programID, "projection");
         glUniformMatrix4fv(projectionLocationID, 1, GL_FALSE, glm::value_ptr(PROJECTION));
         
         // Draw vertex array as triangles
