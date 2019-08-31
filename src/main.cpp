@@ -22,6 +22,15 @@ glm::mat4 PROJECTION(1.0f);
 glm::mat4 VIEW(1.0f);
 glm::mat4 MODEL(1.0f);
 
+struct Light {
+    glm::vec3 position;
+    glm::vec3 color;
+} LIGHT;
+
+struct Material {
+    glm::vec3 color;
+} MATERIAL;
+
 // Read triangle mesh from Wavefront OBJ file format
 bool readTriangleMesh(
         const std::string & filename,
@@ -486,6 +495,12 @@ int main(int argc, char ** argv) {
     // Initialize projection matrix and viewport
     resize(window, 800, 600);
     
+    // Initialize light parameters
+    LIGHT.position = glm::vec3(0.0f, 10.0f, 0.0f);
+    LIGHT.color = glm::vec3(1.0f, 1.0f, 1.0f) * 150.0f;
+    
+    MATERIAL.color = glm::vec3(1.0f, 1.0f, 1.0f);
+    
     // Get model matrix location in shader program
     GLint modelLocationID = glGetUniformLocation(programID, "model");
     
@@ -494,6 +509,15 @@ int main(int argc, char ** argv) {
     
     // Get projection matrix location in shader program
     GLint projectionLocationID = glGetUniformLocation(programID, "projection");
+    
+    // Get light position location in shader program
+    GLint lightPositionLocationID = glGetUniformLocation(programID, "light.position");
+    
+    // Get light color location in shader program
+    GLint lightColorLocationID = glGetUniformLocation(programID, "light.color");
+    
+    // Get material color location in shader program
+    GLint materialColorLocationID = glGetUniformLocation(programID, "material.color");
     
     // Render loop
     while (!glfwWindowShouldClose(window)) {
@@ -520,6 +544,15 @@ int main(int argc, char ** argv) {
         
         // Pass projection matrix as parameter to shader program
         glUniformMatrix4fv(projectionLocationID, 1, GL_FALSE, glm::value_ptr(PROJECTION));
+        
+        // Pass light position as parameter to shader program
+        glUniform3fv(lightPositionLocationID, 1, glm::value_ptr(LIGHT.position));
+        
+        // Pass light color as parameter to shader program
+        glUniform3fv(lightColorLocationID, 1, glm::value_ptr(LIGHT.color));
+        
+        // Pass material color as parameter to shader program
+        glUniform3fv(materialColorLocationID, 1, glm::value_ptr(MATERIAL.color));
         
         // Draw vertex array as triangles
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
