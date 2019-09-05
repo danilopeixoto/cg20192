@@ -31,6 +31,83 @@ struct Material {
     glm::vec3 color;
 } MATERIAL;
 
+// Read 8-bit RGB image from Netpbm binary file format (PPM)
+// and convert to 32-bit linear RGB image
+bool readImage(
+        const std::string & filename,
+        size_t & width, size_t & height,
+        std::vector<glm::vec3> & pixels) {
+    std::ifstream file(filename, std::ifstream::in | std::ifstream::binary);
+    
+    if (!file.is_open())
+        return false;
+    
+    std::string magic, comment;
+    size_t w, h, depth;
+    
+    file >> magic;
+    
+    file.ignore();
+
+    if (file.peek() == '#')
+        std::getline(file, comment);
+    
+    file >> w >> h >> depth;
+    
+    file.ignore();
+    
+    if (magic != "P6" || depth == 0) {
+        file.close();
+        return false;
+    }
+    
+    float inverseDepth = 1.0f / depth;
+    size_t size = w * h;
+    
+    width = w;
+    height = h;
+    
+    pixels.resize(size);
+    
+    for (size_t i = 0; i < size; i++) {
+        glm::vec3 & pixel = pixels[i];
+        unsigned char data[3];
+        
+        file.read((char *)data, sizeof(data));
+        
+        pixel.r = glm::clamp((float)data[0] * inverseDepth, 0.0f, 1.0f);
+        pixel.g = glm::clamp((float)data[1] * inverseDepth, 0.0f, 1.0f);
+        pixel.b = glm::clamp((float)data[2] * inverseDepth, 0.0f, 1.0f);
+    }
+    
+    file.close();
+    
+    return true;
+}
+
+// Load 32-bit linear RBG image to OpenGL
+GLuint loadImage(size_t width, size_t height, const std::vector<glm::vec3> & pixels) {
+    GLuint textureID;
+    
+    // Create and bind texture
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    
+    // Setup texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    
+    // Copy pixel data to texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, pixels.data());
+    
+    // Generate mipmap textures
+    glGenerateMipmap(GL_TEXTURE_2D);
+    
+    return textureID;
+}
+
 // Read triangle mesh from Wavefront OBJ file format
 bool readTriangleMesh(
         const std::string & filename,
@@ -360,7 +437,8 @@ bool createProgram(const std::string & name, GLuint & id) {
 void resize(GLFWwindow * window, int width, int height) {
     glViewport(0, 0, width, height);
     
-    PROJECTION = glm::perspective(45.0f, width / (float)height, 0.001f, 1000.0f);
+    if (height > 0)
+        PROJECTION = glm::perspective(45.0f, width / (float)height, 0.001f, 1000.0f);
 }
 
 // Keyboard event callback
@@ -459,7 +537,7 @@ int main(int argc, char ** argv) {
     std::vector<size_t> textureCoordinateIndices;
     
     if (!readTriangleMesh(
-            "../res/meshes/bunny.obj",
+            "../res/meshes/bunny_unwrapped.obj",
             positions,
             normals,
             textureCoordinates,
@@ -486,9 +564,23 @@ int main(int argc, char ** argv) {
         vao,
         vbo);
     
+    // Read 8-bit RGB texture from Netpbm binary file format (PPM)
+    size_t width, height;
+    std::vector<glm::vec3> pixels;
+    
+    if (!readImage("../res/textures/checkboard.ppm", width, height, pixels)) {
+        glfwTerminate();
+        
+        std::cout << "Cannot read image." << std::endl;
+        return -1;
+    };
+    
+    // Load 32-bit linear RGB texture to OpenGL
+    GLuint textureID = loadImage(width, height, pixels);
+    
     // Setup view matrix
     VIEW = glm::lookAt(
-        glm::vec3(10.0f, 5.0f, 10.0f),
+        glm::vec3(6.0f, 3.0f, 6.0f),
         glm::vec3(0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f));
     
@@ -497,7 +589,7 @@ int main(int argc, char ** argv) {
     
     // Initialize light parameters
     LIGHT.position = glm::vec3(0.0f, 10.0f, 0.0f);
-    LIGHT.color = glm::vec3(1.0f, 1.0f, 1.0f) * 150.0f;
+    LIGHT.color = glm::vec3(1.0f, 1.0f, 1.0f) * 200.0f;
     
     MATERIAL.color = glm::vec3(1.0f, 1.0f, 1.0f);
     
@@ -519,6 +611,9 @@ int main(int argc, char ** argv) {
     // Get material color location in shader program
     GLint materialColorLocationID = glGetUniformLocation(programID, "material.color");
     
+    // Get image location in shader program
+    GLint imageLocationID = glGetUniformLocation(programID, "image");
+    
     // Render loop
     while (!glfwWindowShouldClose(window)) {
         // Setup color buffer
@@ -526,7 +621,7 @@ int main(int argc, char ** argv) {
             glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
         else
             glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            
+        
         // Clear color buffer
         glClear(GL_COLOR_BUFFER_BIT);
         
@@ -536,23 +631,29 @@ int main(int argc, char ** argv) {
         // Clear depth buffer
         glClear(GL_DEPTH_BUFFER_BIT);
         
-        // Pass model matrix as parameter to shader program
+        // Load model matrix as parameter to shader program
         glUniformMatrix4fv(modelLocationID, 1, GL_FALSE, glm::value_ptr(MODEL));
         
-        // Pass view matrix as parameter to shader program
+        // Load view matrix as parameter to shader program
         glUniformMatrix4fv(viewLocationID, 1, GL_FALSE, glm::value_ptr(VIEW));
         
-        // Pass projection matrix as parameter to shader program
+        // Load projection matrix as parameter to shader program
         glUniformMatrix4fv(projectionLocationID, 1, GL_FALSE, glm::value_ptr(PROJECTION));
         
-        // Pass light position as parameter to shader program
+        // Load light position as parameter to shader program
         glUniform3fv(lightPositionLocationID, 1, glm::value_ptr(LIGHT.position));
         
-        // Pass light color as parameter to shader program
+        // Load light color as parameter to shader program
         glUniform3fv(lightColorLocationID, 1, glm::value_ptr(LIGHT.color));
         
-        // Pass material color as parameter to shader program
+        // Load material color as parameter to shader program
         glUniform3fv(materialColorLocationID, 1, glm::value_ptr(MATERIAL.color));
+        
+        // Bind texture to texture unit
+        glActiveTexture(GL_TEXTURE0);
+        
+        // Load texture unit as sampler parameter to shader program
+        glUniform1i(imageLocationID, 0);
         
         // Draw vertex array as triangles
         glDrawArrays(GL_TRIANGLES, 0, vertexCount);
@@ -572,6 +673,9 @@ int main(int argc, char ** argv) {
 
     // Delete vertex buffer object
     glDeleteBuffers(1, &vbo);
+    
+    // Delete texture
+    glDeleteTextures(1, &textureID);
 
     // Destroy window
     glfwDestroyWindow(window);
