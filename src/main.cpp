@@ -537,7 +537,7 @@ int main(int argc, char ** argv) {
     std::vector<size_t> textureCoordinateIndices;
     
     if (!readTriangleMesh(
-            "../res/meshes/bunny_unwrapped.obj",
+            "../res/meshes/emily.obj",
             positions,
             normals,
             textureCoordinates,
@@ -564,23 +564,23 @@ int main(int argc, char ** argv) {
         vao,
         vbo);
     
-    // Read 8-bit RGB texture from Netpbm binary file format (PPM)
+    // Read 8-bit RGB image from Netpbm binary file format (PPM)
     size_t width, height;
     std::vector<glm::vec3> pixels;
     
-    if (!readImage("../res/textures/checkboard.ppm", width, height, pixels)) {
+    if (!readImage("../res/textures/diffuse.ppm", width, height, pixels)) {
         glfwTerminate();
         
         std::cout << "Cannot read image." << std::endl;
         return -1;
     };
     
-    // Load 32-bit linear RGB texture to OpenGL
+    // Load 32-bit linear RGB image to OpenGL
     GLuint textureID = loadImage(width, height, pixels);
     
     // Setup view matrix
     VIEW = glm::lookAt(
-        glm::vec3(6.0f, 3.0f, 6.0f),
+        glm::vec3(40.0f, 0.0f, 0.0f),
         glm::vec3(0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f));
     
@@ -588,8 +588,8 @@ int main(int argc, char ** argv) {
     resize(window, 800, 600);
     
     // Initialize light parameters
-    LIGHT.position = glm::vec3(0.0f, 10.0f, 0.0f);
-    LIGHT.color = glm::vec3(1.0f, 1.0f, 1.0f) * 200.0f;
+    LIGHT.position = glm::vec3(40.0f, 0.0f, 0.0f);
+    LIGHT.color = glm::vec3(1.0f, 1.0f, 1.0f) * 2000.0f;
     
     MATERIAL.color = glm::vec3(1.0f, 1.0f, 1.0f);
     

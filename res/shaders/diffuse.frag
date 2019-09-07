@@ -18,13 +18,15 @@ uniform struct Material {
 uniform sampler2D image;
 
 void main() {
+    vec2 uv = vec2(UV.x, -UV.y);
+    
     vec3 L = light.position - P;
     float invD2 = 1.0f / dot(L, L);
     
     L *= sqrt(invD2);
     
     vec3 li = light.color * invD2;
-    vec3 brdf = material.color * texture(image, UV).xyz * INV_PI;
+    vec3 brdf = material.color * texture(image, uv).rgb * INV_PI;
     vec3 diffuse = brdf * li * max(dot(N, L), 0.0f);
     
     gl_FragColor = vec4(diffuse, 1.0f);
