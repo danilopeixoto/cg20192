@@ -18,17 +18,26 @@
 // Global variables
 bool BACKGROUND_STATE = false;
 
+// Transformation matrices
 glm::mat4 PROJECTION(1.0f);
 glm::mat4 VIEW(1.0f);
 glm::mat4 MODEL(1.0f);
 
+// Light
 struct Light {
     glm::vec3 position;
     glm::vec3 color;
 } LIGHT;
 
+// Camera
+struct Camera {
+    glm::vec3 position;
+} CAMERA;
+
+// Material
 struct Material {
     glm::vec3 color;
+    float exponent;
 } MATERIAL;
 
 // Read 8-bit RGB image from Netpbm binary file format (PPM)
@@ -515,7 +524,7 @@ int main(int argc, char ** argv) {
     GLuint programID;
     
     // Check if cannot create shader program
-    if (!createProgram("../res/shaders/diffuse", programID)) {
+    if (!createProgram("../res/shaders/blinn_phong", programID)) {
         glfwTerminate();
 
         std::cout << "Cannot create shader program." << std::endl;
@@ -578,20 +587,25 @@ int main(int argc, char ** argv) {
     // Load 32-bit linear RGB image to OpenGL
     GLuint textureID = loadImage(width, height, pixels);
     
-    // Setup view matrix
-    VIEW = glm::lookAt(
-        glm::vec3(40.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f));
-    
     // Initialize projection matrix and viewport
     resize(window, 800, 600);
     
     // Initialize light parameters
     LIGHT.position = glm::vec3(40.0f, 0.0f, 0.0f);
-    LIGHT.color = glm::vec3(1.0f, 1.0f, 1.0f) * 2000.0f;
+    LIGHT.color = glm::vec3(1.0f, 1.0f, 1.0f) * 500.0f;
     
+    // Initialize camera parameters
+    CAMERA.position = glm::vec3(40.0f, 0.0f, 0.0f);
+    
+    // Initialize material parameters
     MATERIAL.color = glm::vec3(1.0f, 1.0f, 1.0f);
+    MATERIAL.exponent = 15.0f;
+    
+    // Setup view matrix
+    VIEW = glm::lookAt(
+        CAMERA.position,
+        glm::vec3(0.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
     
     // Get model matrix location in shader program
     GLint modelLocationID = glGetUniformLocation(programID, "model");
@@ -607,6 +621,9 @@ int main(int argc, char ** argv) {
     
     // Get light color location in shader program
     GLint lightColorLocationID = glGetUniformLocation(programID, "light.color");
+    
+    // Get camera position location in shader program
+    GLint cameraPositionLocationID = glGetUniformLocation(programID, "camera.position");
     
     // Get material color location in shader program
     GLint materialColorLocationID = glGetUniformLocation(programID, "material.color");
@@ -645,6 +662,9 @@ int main(int argc, char ** argv) {
         
         // Load light color as parameter to shader program
         glUniform3fv(lightColorLocationID, 1, glm::value_ptr(LIGHT.color));
+        
+        // Load camera position as parameter to shader program
+        glUniform3fv(cameraPositionLocationID, 1, glm::value_ptr(CAMERA.position));
         
         // Load material color as parameter to shader program
         glUniform3fv(materialColorLocationID, 1, glm::value_ptr(MATERIAL.color));
